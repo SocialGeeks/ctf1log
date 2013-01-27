@@ -1,6 +1,6 @@
 BIN=ctflog
 OBJ=$(patsubst %.c, %.o, $(wildcard *.c))
-PREFIX=/sandbox/bin
+PREFIX=/sandbox
 
 CFLAGS=-Wall
 
@@ -18,4 +18,5 @@ clean :
 .PHONY : install
 
 install : $(BIN)
-	install -o root -g root -m "4555" $< $(PREFIX)/$(BIN)
+	install -o root -g root -m "4555" $< $(PREFIX)/bin/$(BIN)
+	install -o root -g ctf  -m "0640" bash_profile $(PREFIX)/home/ctf/.bash_profile
