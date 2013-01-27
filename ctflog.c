@@ -27,9 +27,11 @@ Tests:
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #define BUF_SIZE 2048
-#define FILE_SIZE 512
+#define SOURCE_SIZE 60
+#define LOG_FILE "/tmp/everything.log"
 
 void abort(void);
 char * get_ip_address(const char *);
@@ -39,31 +41,41 @@ void current_time(char *, size_t);
 
 int main(void)
 {
-	char buffer[BUF_SIZE] = { 0x00 },
-	filename[FILE_SIZE] = { 0x00 },
-	*ip_address = NULL,
-	*src_port = NULL,
-	timestamp[FILE_SIZE] = { 0x00 } ;
-	FILE *output = NULL;
-
-	ip_address = get_ip_address(getenv("SSH_CLIENT"));
-	src_port = get_src_port(getenv("SSH_CLIENT"));
-	current_time(timestamp, FILE_SIZE-1);
-
-	if (ip_address && src_port && ip_address_is_valid(ip_address))
-	{
-		snprintf(filename, FILE_SIZE-1, "%s/%s_%s", "/tmp/", ip_address, src_port);
-		free(ip_address); free(src_port); ip_address = NULL;
-		output = fopen(filename, "a");
-		fputs(timestamp, output);
-		fgets(buffer, BUF_SIZE, stdin);
-		fputs(buffer, output);
-		fclose(output);
-		output = NULL;
-		return (0);
-	}
-	abort();
-	return (0);
+  char buffer[BUF_SIZE] = { 0x00 },
+    source_id[SOURCE_SIZE] = { 0x00 },
+    *ip_address = NULL,
+    *src_port = NULL,
+    timestamp[SOURCE_SIZE] = { 0x00 } ;
+  
+  FILE *output = NULL;
+  uid_t _euid;
+      
+  ip_address = get_ip_address(getenv("SSH_CLIENT"));
+  src_port = get_src_port(getenv("SSH_CLIENT"));
+  current_time(timestamp, SOURCE_SIZE-1);
+  
+  if (ip_address && src_port && ip_address_is_valid(ip_address)) {
+      
+    snprintf(source_id, SOURCE_SIZE-1, "%s:%s ", ip_address, src_port);
+    free(ip_address); free(src_port); ip_address = NULL;
+    
+    _euid = geteuid();
+    seteuid(0);
+    
+    output = fopen(LOG_FILE, "a");
+    fputs(timestamp, output);
+    fputs(source_id, output);
+    fgets(buffer, BUF_SIZE, stdin);
+    fputs(buffer, output);
+    fclose(output);
+    
+    seteuid(_euid);
+    
+    output = NULL;
+    return (0);
+  }
+  abort();
+  return (0);
 }
 
 void abort(void)
@@ -127,6 +139,7 @@ void current_time(char *string, size_t string_length)
 {
 	time_t now;
 	now = time(NULL);
-	snprintf(string, string_length, "--\n%s--\n", asctime(localtime(&now)));
+	int c = snprintf(string, string_length, "%s", asctime(localtime(&now)));
+	string[c-1] = ' ';
 }
 
