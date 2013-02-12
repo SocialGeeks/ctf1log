@@ -3,7 +3,6 @@ function log2somewhere
 {
   declare command
   command=$(fc -ln -0)
-  logger -p local1.notice -t bash -i "$USER:$SSH_CLIENT:$SSH_CONNECTION:$command"
   echo "$USER:$command" | ctflog
 }
 trap log2somewhere DEBUG
